@@ -13,6 +13,9 @@ The following will be customized
 1. Working directory. Set location based on your folder structure. 
 2. The file_pattern, the last number thread refers to the date when the files were updated. The current version c20250401 refers to the last updated on April 1st 2025. 
 
+To Dos:- 
+1. Confirm list of the SCS related event types
+
 """
 #%%
 # Load necessary libraries
