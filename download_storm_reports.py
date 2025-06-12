@@ -28,7 +28,8 @@ from tqdm import tqdm  # For progress tracking
 
 
 # Set the working directory path
-working_directory = r'C:\Users\amonkar\Documents\GitHub\SCS_API' #Set to your folder pathway
+working_directory = r'/Users/jimnguyen/IRMII/SCS_API' #Set to your folder pathway
+#/Users/jimnguyen/IRMII/SCS_API
 os.chdir(working_directory)
 
 
@@ -116,6 +117,8 @@ SCS_events = ['HAIL FLOODING','HAIL/ICY ROADS','Hail','High Wind','Lightning','M
               'THUNDERSTORM WINDS/FLASH FLOOD','THUNDERSTORM WINDS/FLOODING', 'THUNDERSTORM WINDS/HEAVY RAIN',
               'TORNADO/WATERSPOUT', 'TORNADOES, TSTM WIND, HAIL', 'Thunderstorm Wind', 'Tornado', ]
 
+
+#
 
 #%% Create a single dataframe
 combined_scs_report = []

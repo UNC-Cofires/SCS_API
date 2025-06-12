@@ -1,3 +1,6 @@
+#daily 
+
+
 import requests
 import csv
 import time
@@ -15,7 +18,7 @@ default_header = ['Time', 'F-Scale', 'Location', 'County', 'State', 'Lat', 'Lon'
 retry_counter = 0
 current_year = 25
 current_month = 4
-for year_use in range(25, 3, -1):
+for year_use in range(25, 4, -1):
   for month_use in range(0, 12):
     monthly_vals = {}
     monthly_vals['torn'] = pd.DataFrame()

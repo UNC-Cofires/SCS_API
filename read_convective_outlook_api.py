@@ -4,14 +4,27 @@ import zipfile
 import io
 import os
 import time
+import sys
 
 url = 'https://spc.noaa.gov/products/outlook/archive/'
 # create directory to store downloaded data files
 output_dir = 'convective_outlooks'
 os.makedirs(output_dir, exist_ok = True)
 
+
+# added argumnt to specify the exact year to download
+if len(sys.argv) > 1 and sys.argv[1].lower() != 'all':
+    try:
+        years_to_download = [int(sys.argv[1])]
+    except ValueError:
+        print(f"Invalid year: {sys.argv[1]}")
+        sys.exit(1)
+else:
+    years_to_download = range(2025, 2000, -1)
+
+
 # loop through all the pages in the archive
-for year_use in range(2025, 2000, -1):
+for year_use in years_to_download:
   year_dir = os.path.join(output_dir, str(year_use))
   os.makedirs(year_dir, exist_ok = True)
   for month_use in range(0, 12):
