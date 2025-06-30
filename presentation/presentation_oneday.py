@@ -9,7 +9,7 @@ from datetime import datetime
 from matplotlib.patches import Patch
 from matplotlib.colors import BoundaryNorm, ListedColormap
 
-"Single Day PPH Values"
+"Maps NOAA PPH values for a specific day"
 
 # Load NAM-212 grid coordinates
 grid_ds = xr.open_dataset("/Users/jacksonmorrissett/Projects/Research/nam212.nc") #Set to your folder pathway
