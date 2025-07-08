@@ -10,16 +10,16 @@ import xarray as xr
 "NAM215 : 20KM grids"
 "NAM218 : 12KM grids"
 
-"Before running, you must have adjusted the following "
-"1) grid_spacing_km to match your grid spacing"
+"Before running, you must have changed the following "
+"1) Adjusted grid_spacing_km to match your desired grid spacing"
 "2) Changed output folder name to match your grid spacing"
 "3) Set the correct path for the grid file in the try block (grid_ds)"
 
-sigma_grid_units = 10 # Change this to adjust the Gaussian spread
-grid_spacing_km = 12 # Adjust this to match your grid spacing (e.g., 40 km for NAM-212)
+grid_spacing_km = 40 
+sigma_grid_units = 3 # Change this to adjust the spread
 
 # Create output directory
-output_folder = "ncei_pph_nam218" # Change this to your desired output folder
+output_folder = "ncei_pph_nam212" # Change this to your desired output folder
 os.makedirs(output_folder, exist_ok=True)
 
 start_year = 1950 #starts at this year
@@ -29,10 +29,10 @@ end_year = 2025 #ends at beginning of this year
 url ='https://github.com/UNC-Cofires/SCS_API/tree/jack-workplace/grids'
 
 try:
-    grid_ds = xr.open_dataset("/Users/jacksonmorrissett/projects/Research/grids/nam218.nc") #Set to your folder pathway
-    grid212_lat = grid_ds["gridlat"].values  # (ny, nx)
-    grid212_lon = grid_ds["gridlon"].values  # (ny, nx)
-    print(f"Loaded grid with shape: {grid212_lat.shape}")
+    #Set to your folder pathway below
+    grid_ds = xr.open_dataset("/Users/jacksonmorrissett/projects/Research/grids/nam212.nc") 
+    grid212_lat = grid_ds["gridlat"].values  
+    grid212_lon = grid_ds["gridlon"].values  
 except Exception as e:
     print(f"Error loading grid file: {e}")
     exit(1)
