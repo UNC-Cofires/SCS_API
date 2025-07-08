@@ -9,41 +9,69 @@ from datetime import datetime, timedelta
 from matplotlib.patches import Patch
 from matplotlib.colors import BoundaryNorm, ListedColormap
 
-"WIP"
-"Code graphs the nam212_pph and attempts to replicate the Research paper's visualizations"
+"Code graphs PPH for both noaa and ncei and attempts to replicate "
+"Practically Perfect Hindcasts of Severe Convective Storms  visualizations"
+
+"We use NCEI up until year 2024, and then 2025 onwards we use NOAA"
+
 "All credit to the original research paper and its code can be found here"
 url = 'https://github.com/ahaberlie/PPer_Climo'
 
-# Load NAM-212 grid coordinates
-grid_ds = xr.open_dataset("/Users/jacksonmorrissett/Research/nam212.nc") #Set to your folder pathway
-lats = grid_ds["gridlat_212"].values
-lons = grid_ds["gridlon_212"].values
+"Before running, you must have adjusted the following "
+"1) set the correct path for the grid spacing file (grid_ds)"
+"2) Adjust file name for ncei_pph_namXXX output file in get_data_path function"
+"3) Adjust 'scales' in plot_pph_analysis function"
+
+# Load your desired grid coordinates
+grid_ds = xr.open_dataset("/Users/jacksonmorrissett/Projects/Research/grids/nam212.nc") #Set to your folder pathway
+lats = grid_ds["gridlat"].values
+lons = grid_ds["gridlon"].values
+
+# Years to analyze (start_year-2024 is NCEI, 2025 is NOAA)
+start_year = 1999
+end_year = 2018
+
+#Adjust file names to match your grid size
+def get_data_path(storm_type, year, month, day):
+    if year <= 2024:
+        return f"ncei_pph_nam212/{storm_type}/pph_{year}_{month:02d}_{day:02d}.csv"
+    else:  # year >= 2025
+        return f"noaa_pph_nam212/{storm_type}/pph_{year}_{month:02d}_{day:02d}.csv"
+
+# Choose if "slight", "moderate", or "significant severe"
+storm_configs = {
+    'torn': [0.05],    # .05 = slight, .3 = moderate
+    'wind': [0.15],    # .15 = slight, .6 = moderate
+    'hail': [0.15]     # .15 = slight, .6 = moderate
+}
 
 # Use Albers Equal Area projection
 from_proj = ccrs.PlateCarree()
 projection = ccrs.AlbersEqualArea(central_longitude=-96, central_latitude=37.5, false_easting=0.0, 
                                  false_northing=0.0, standard_parallels=(29.5, 45.5), globe=None)
 
-# Cities to plot
+# Cities plotted
 cities = {'Denver, CO': (-104.9903, 39.7392),
         'Omaha, NE': (-95.9345, 41.2565),
-        'Columbus, OH': (-82.9988, 39.9612),
-        'Albany, NY': (-73.7562, 42.6526),
         'Charlotte, NC': (-80.8431, 35.2271),
         'San Antonio, TX': (-98.4936, 29.4241),
+        'Dallas, TX': (-96.7977, 32.7815),
         'Oklahoma City, OK': (-97.5164, 35.4676), 
-        'Tuscaloosa, AL': (-87.5692, 33.2098), 
         'St. Louis, MO': (-90.1994, 38.6270),
         'Minneapolis, MN': (-93.2650, 44.9778), 
-        'Orlando, FL': (-81.3792, 28.5383), 
         'Bismarck, ND': (-100.773703, 46.801942),
+        'Chicago ,IL' : (-87.3954, 41.520480),
         'Washington, DC': (-77.0369, 38.9072)}
+
+# Function to determine which data source to use based on year
+# Change the return files to match your grid size
 
 # Maps America
 def draw_geography(ax):
     """Add geographic features to the map"""
     ax.add_feature(cfeature.OCEAN, color='lightblue', zorder=9)
     ax.add_feature(cfeature.LAND, color='darkgray', zorder=2)
+
     ax.add_feature(cfeature.BORDERS, linewidth=0.8, edgecolor='black', zorder=8)
     ax.add_feature(cfeature.COASTLINE.with_scale('50m'), edgecolor='black', linewidth=0.8, zorder=9)
     ax.add_feature(cfeature.LAKES.with_scale('50m'), facecolor='lightblue', edgecolor='black', linewidth=0.8,zorder=9)
@@ -97,12 +125,14 @@ def draw_pper_map(pper_subset, map_title, map_color_scale, map_colors):
     
     return ax
 
-# Calculates the mean annual event days
+# Calculates the mean annual event days (now handles both NCEI and NOAA data)
 def calculate_mean_annual_days(storm_type, severity, start_year, end_year):
     start_date = datetime(start_year, 1, 1)
     end_date = datetime(end_year, 12, 31)
     days_processed = 0 
     total_days_above_threshold = None
+    ncei_days = 0
+    noaa_days = 0
     
     current_date = start_date 
     while current_date <= end_date:
@@ -110,7 +140,9 @@ def calculate_mean_annual_days(storm_type, severity, start_year, end_year):
         month = current_date.month
         day = current_date.day
 
-        csv_path = f"nam212_pph/{storm_type}/pph_{year}_{month:02d}_{day:02d}.csv"
+        # Use the new function to get the appropriate data path
+        csv_path = get_data_path(storm_type, year, month, day)
+        
         if not os.path.exists(csv_path):
             current_date += timedelta(days=1)
             continue
@@ -125,6 +157,12 @@ def calculate_mean_annual_days(storm_type, severity, start_year, end_year):
             total_days_above_threshold += pph_daily
             days_processed += 1
             
+            # Track which data source was used
+            if year <= 2024:
+                ncei_days += 1
+            else:
+                noaa_days += 1
+            
         except Exception as e:
             print(f"Error processing {csv_path}: {e}")
             
@@ -137,6 +175,8 @@ def calculate_mean_annual_days(storm_type, severity, start_year, end_year):
     num_years = end_year - start_year + 1
     mean_annual_days = total_days_above_threshold / num_years
     print(f"Processed {days_processed} days for {storm_type}, {num_years} years")
+    print(f"  - NCEI days: {ncei_days}")
+    print(f"  - NOAA days: {noaa_days}")
     return mean_annual_days
 
 # Main plotting function
@@ -158,22 +198,21 @@ def plot_pph_analysis(start_year, end_year, storm_configs):
         'wind': ['#ffffff','#c6dbef','#9ecae1','#6baed6','#3182bd','#08519c']
     }
     
-    # Scales adjusted for PPH values
+    # Adjust scales depending on your grid type. 
+    # Current sizing is for 40km NAM-212 grid
     scales = {
         'torn': {
-            0.05: [0, 0.1, 0.5, 1.0, 2.0, 5.0, 100],
-            0.15: [0, 0.5, 1.0, 2.0, 4.0, 8.0, 100],
-            0.30: [0, 0.2, 0.5, 1.0, 2.0, 4.0, 100]
+            0.05: [0.025, .5, 2, 3, 4, 5, 100],
+            0.30: [0.0125, 0.15, .3, .45, .6, .75, 100]
         },
         'hail': {
-            0.05: [0, 0.5, 1.0, 2.0, 4.0, 8.0, 100],
-            0.15: [0, 1.0, 2.0, 4.0, 8.0, 12.0, 100],
-            0.30: [0, 0.5, 1.0, 2.0, 4.0, 6.0, 100]
+            0.15:  [0.0125, .5, 4, 8, 12, 15, 100],
+            0.60: [0.0125, .5, 1, 2, 3, 4, 100]
+
         },
         'wind': {
-            0.05: [0, 1.0, 2.0, 4.0, 8.0, 12.0, 100],
-            0.15: [0, 2.0, 4.0, 8.0, 12.0, 16.0, 100],
-            0.30: [0, 1.0, 2.0, 4.0, 6.0, 8.0, 100]
+            0.15:  [0.025, 1, 3, 7, 12, 17, 100],
+            0.60: [0.0125, .5, 1, 2, 2.5, 3, 100]
         }
     }
     
@@ -233,7 +272,6 @@ def plot_pph_analysis(start_year, end_year, storm_configs):
                       transform=ax.transAxes, fontsize=25, 
                       bbox=dict(facecolor='w', edgecolor='k', boxstyle='round'), zorder=15)
                 
-
                 txt = ax.text(maxlab_x, maxlab_y, "Max (+): {:.2f}".format(float(max_val)), 
                       transform=ax.transAxes, fontsize=25, 
                       bbox=dict(facecolor='w', edgecolor='k', boxstyle='round'), zorder=15)
@@ -244,17 +282,6 @@ def plot_pph_analysis(start_year, end_year, storm_configs):
                 plt.close()
             else:
                 print(f"No data available for {storm_type} at {severity*100}% threshold")
-
-# Storm thresholds
-storm_configs = {
-    'torn': [0.05],    # 5% threshold
-    'wind': [0.15],    # 15% threshold  
-    'hail': [0.15]     # 15% threshold
-}
-
-# Years to analyze (adjust to match your available data)
-start_year = 2012 
-end_year = 2024
 
 # Run the analysis
 if __name__ == "__main__":
