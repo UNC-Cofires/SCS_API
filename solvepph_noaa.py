@@ -3,20 +3,37 @@ import os
 import pandas as pd
 import xarray as xr
 
-"Code is complete, but the grid spacing is wrong"
-"We need to get nam211, which is 80km grid spacing, but all I could find is "
-"nam212, which is 40km grid spacing"
+"Code finds PPH for NOAA Storm Reports, from "
+"hail_reports, wind_reports, tornado_reports"
 
-sigma_grid_units = 1.5
-grid_spacing_km = 40.0   
+"NAM211 : 80KM grids"
+"NAM212 : 40KM grids"
+"NAM215 : 20KM grids"
+"NAM218 : 12KM grids"
 
-# Download and Load NAM-212 grid 
-url = 'https://github.com/ahaberlie/PPer_Climo/tree/master/data'
+"Before running, you must have changed the following "
+"1) Adjusted grid_spacing_km to match your desired grid spacing"
+"2) Changed output folder name to match your grid spacing"
+"3) Set the correct path for the grid file in the try block (grid_ds)"
+
+grid_spacing_km = 10
+sigma_grid_units = 12 # Change this to adjust the spread
+
+# Create output directory
+output_folder = "noaa_pph_nam218"
+os.makedirs(output_folder, exist_ok=True)
+
+start_year = 2025  #starts at 2025
+end_year = 2026 #ends at last file in 2025
+
+# Download and load grid 
+url ='https://github.com/UNC-Cofires/SCS_API/tree/jack-workplace/grids'
+
 try:
-    grid_ds = xr.open_dataset("/Users/jacksonmorrissett/Research/nam212.nc") #Set to your folder pathway
-    grid212_lat = grid_ds["gridlat_212"].values  # (ny, nx)
-    grid212_lon = grid_ds["gridlon_212"].values  # (ny, nx)
-    print(f"Loaded grid with shape: {grid212_lat.shape}")
+    #Set to your folder pathway below
+    grid_ds = xr.open_dataset("/Users/jacksonmorrissett/projects/Research/grids/nam218.nc")
+    grid212_lat = grid_ds["gridlat"].values  # (ny, nx)
+    grid212_lon = grid_ds["gridlon"].values  # (ny, nx)
 except Exception as e:
     print(f"Error loading grid file: {e}")
     exit(1)
@@ -33,10 +50,6 @@ def euclidean_distance_km(grid_lat, grid_lon, report_lat, report_lon):
     lon_km = 111.32 * np.cos(np.radians(report_lat)) * (grid_lon - report_lon)
     return np.sqrt(lat_km**2 + lon_km**2)
 
-# Create output directory
-output_folder = "nam212_pph"
-os.makedirs(output_folder, exist_ok=True)
-
 # Go through each storm type
 for storm_type, folder in storm_dirs.items():
     print(f"\nProcessing {storm_type} reports...")
@@ -45,7 +58,7 @@ for storm_type, folder in storm_dirs.items():
     output_subfolder = os.path.join(output_folder, storm_type)
     os.makedirs(output_subfolder, exist_ok=True)
     
-    for year in range(2012, 2026): #Set to (first year, lastyear + 1)
+    for year in range(start_year, end_year):
         for month in range(1, 13):
             file_name = f"{storm_type}_{month}_{year}.csv"
             file_path = os.path.join(folder, file_name)
@@ -64,15 +77,10 @@ for storm_type, folder in storm_dirs.items():
                 # Remove rows with missing  data
                 initial_count = len(data)
                 data = data.dropna(subset=['Lat', 'Lon', 'Day'])
-                if len(data) < initial_count:
-                    print(f"    Removed {initial_count - len(data)} rows with missing data")
 
                 # Filter to CONUS bounds
                 conus_data = data[(data['Lat'] >= 24.52) & (data['Lat'] <= 49.385) &
                                  (data['Lon'] >= -124.74) & (data['Lon'] <= -66.95)]
-
-                if len(conus_data) < len(data):
-                    print(f"    Filtered {len(data) - len(conus_data)} reports outside CONUS")
                 
                 data = conus_data
 
@@ -126,4 +134,4 @@ for storm_type, folder in storm_dirs.items():
                 print(f"    Error processing file {file_path}: {e}")
                 continue
 
-print("PPH Download complete")
+print("\nNOAA PPH processing complete!")
