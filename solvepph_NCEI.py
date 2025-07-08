@@ -3,27 +3,46 @@ import os
 import pandas as pd
 import xarray as xr
 
-"Code adapted for NOAA Storm Reports format"
-"Processing Storm_Reports_YYYY_latlong.csv files from 1950-2024"
+"Code finds PPH for NCEI Storm Reports, from 'filtered' folder"
 
-sigma_grid_units = 1.5
-grid_spacing_km = 40.0   
+"NAM211 : 80KM grids"
+"NAM212 : 40KM grids"
+"NAM215 : 20KM grids"
+"NAM218 : 12KM grids"
 
-# Download and Load NAM-212 grid 
-url = 'https://github.com/ahaberlie/PPer_Climo/tree/master/data'
+"Before running, you must have adjusted the following "
+"1) grid_spacing_km to match your grid spacing"
+"2) Changed output folder name to match your grid spacing"
+"3) Set the correct path for the grid file in the try block (grid_ds)"
+
+sigma_grid_units = 10 # Change this to adjust the Gaussian spread
+grid_spacing_km = 12 # Adjust this to match your grid spacing (e.g., 40 km for NAM-212)
+
+# Create output directory
+output_folder = "ncei_pph_nam218" # Change this to your desired output folder
+os.makedirs(output_folder, exist_ok=True)
+
+start_year = 1950 #starts at this year
+end_year = 2025 #ends at beginning of this year
+
+# Download desired grid size
+url ='https://github.com/UNC-Cofires/SCS_API/tree/jack-workplace/grids'
+
 try:
-    grid_ds = xr.open_dataset("/Users/jacksonmorrissett/projects/Research/nam212.nc") #Set to your folder pathway
-    grid212_lat = grid_ds["gridlat_212"].values  # (ny, nx)
-    grid212_lon = grid_ds["gridlon_212"].values  # (ny, nx)
+    grid_ds = xr.open_dataset("/Users/jacksonmorrissett/projects/Research/grids/nam218.nc") #Set to your folder pathway
+    grid212_lat = grid_ds["gridlat"].values  # (ny, nx)
+    grid212_lon = grid_ds["gridlon"].values  # (ny, nx)
     print(f"Loaded grid with shape: {grid212_lat.shape}")
 except Exception as e:
     print(f"Error loading grid file: {e}")
     exit(1)
 
-# Storm type mapping from EVENT_TYPE
+# Storm types (All different wind types under wind)
 storm_types = {
     "Tornado": "torn",
-    "Thunderstorm Wind": "wind", 
+    "Thunderstorm Wind": "wind",
+    "High Wind": "wind",
+    "Strong Wind": "wind",
     "Hail": "hail"
 }
 
@@ -33,17 +52,14 @@ def euclidean_distance_km(grid_lat, grid_lon, report_lat, report_lon):
     lon_km = 111.32 * np.cos(np.radians(report_lat)) * (grid_lon - report_lon)
     return np.sqrt(lat_km**2 + lon_km**2)
 
-# Create output directory
-output_folder = "ncei_pph"
-os.makedirs(output_folder, exist_ok=True)
-
-# Create output subfolders for each storm type
-for storm_type in storm_types.values():
+# Create output subfolders for each unique storm type
+unique_storm_types = list(set(storm_types.values()))
+for storm_type in unique_storm_types:
     output_subfolder = os.path.join(output_folder, storm_type)
     os.makedirs(output_subfolder, exist_ok=True)
 
 # Process each year from 1950-2024
-for year in range(1950, 2025):  #1950 to 2024 inclusive
+for year in range(start_year, end_year): 
     file_name = f"Storm_Reports_{year}_latlong.csv"
     file_path = os.path.join("filtered", file_name)
     
@@ -82,18 +98,19 @@ for year in range(1950, 2025):  #1950 to 2024 inclusive
             print(f"  No valid data for {year}")
             continue
 
-        # Process each storm type
-        for event_type, storm_type in storm_types.items():
-            print(f"  Processing {event_type} reports...")
+        # Process each unique storm type
+        for storm_type in unique_storm_types:
+            print(f"  Processing {storm_type} reports...")
             
-            # Filter data for this storm type
-            storm_data = data[data['EVENT_TYPE'] == event_type].copy()
+            # Filter data for all event types that map to this storm type
+            event_types_for_storm = [event_type for event_type, mapped_type in storm_types.items() if mapped_type == storm_type]
+            storm_data = data[data['EVENT_TYPE'].isin(event_types_for_storm)].copy()
             
             if len(storm_data) == 0:
-                print(f"    No {event_type} reports for {year}")
+                print(f"    No {storm_type} reports for {year}")
                 continue
                 
-            print(f"    Found {len(storm_data)} {event_type} reports")
+            print(f"    Found {len(storm_data)} {storm_type} reports")
             
             # Get output subfolder for this storm type
             output_subfolder = os.path.join(output_folder, storm_type)
@@ -130,15 +147,15 @@ for year in range(1950, 2025):  #1950 to 2024 inclusive
 
                     # Apply prefactor: (1 / (2π sigma²)) 
                     gauss_pref = 1.0 / (2.0 * np.pi * sigma_grid_units**2)
-                    daily_pph = gauss_pref * gaussian_sum
-                    rounded_pph = np.round(daily_pph, 10)
+                    daily_pph = (gauss_pref * gaussian_sum)
+                    daily_pph =np.round(daily_pph,3)
 
                     # Saving
                     file_name_out = f"pph_{year}_{month:02d}_{int(day):02d}.csv"
                     output_file = os.path.join(output_subfolder, file_name_out)
 
                     try:
-                        df = pd.DataFrame(rounded_pph)
+                        df = pd.DataFrame(daily_pph)
                         df.to_csv(output_file, index=False)
                         
                         print(f"    Calculated PPH for {storm_type} on {year}-{month:02d}-{int(day):02d} ({len(day_data)} reports)")
@@ -151,4 +168,4 @@ for year in range(1950, 2025):  #1950 to 2024 inclusive
         print(f"Error processing file {file_path}: {e}")
         continue
 
-print("\nNOAA Storm Reports PPH processing complete!")
+print("\nNCEI PPH processing complete!")
