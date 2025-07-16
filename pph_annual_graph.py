@@ -19,26 +19,27 @@ url = 'https://github.com/ahaberlie/PPer_Climo'
 
 "Before running, you must have adjusted the following "
 "1) set the correct path for the grid spacing file (grid_ds)"
-"2) Adjust file name for ncei_pph_namXXX output file in get_data_path function"
-"3) Adjust 'scales' in plot_pph_analysis function"
+"2) Adjust file name for ncei_pph_namXXX output file in get_data_path function" 
+"3) Adjust file name for noaa_pph_namXXX output file in get_data_path function"
+"4) Adjust 'scales' in plot_pph_analysis function"
 
 # Load your desired grid coordinates
 grid_ds = xr.open_dataset("/Users/jacksonmorrissett/Projects/Research/grids/nam212.nc") #Set to your folder pathway
 lats = grid_ds["gridlat"].values
 lons = grid_ds["gridlon"].values
 
-# Years to analyze (start_year-2024 is NCEI, 2025 is NOAA)
-start_year = 1999
-end_year = 2018
+# Years to analyze 
+start_year = 1999 # Starts in January of this year
+end_year = 2025 # Ends in December of this year
 
 #Adjust file names to match your grid size
 def get_data_path(storm_type, year, month, day):
     if year <= 2024:
-        return f"ncei_pph_nam212/{storm_type}/pph_{year}_{month:02d}_{day:02d}.csv"
+        return f"ncei_pph_outputs/ncei_pph_nam212/{storm_type}/pph_{year}_{month:02d}_{day:02d}.csv"
     else:  # year >= 2025
-        return f"noaa_pph_nam212/{storm_type}/pph_{year}_{month:02d}_{day:02d}.csv"
+        return f"noaa_pph_outputs/noaa_pph_nam212/{storm_type}/pph_{year}_{month:02d}_{day:02d}.csv"
 
-# Choose if "slight", "moderate", or "significant severe"
+# Choose if "slight" or "moderate"
 storm_configs = {
     'torn': [0.05],    # .05 = slight, .3 = moderate
     'wind': [0.15],    # .15 = slight, .6 = moderate
@@ -62,9 +63,6 @@ cities = {'Denver, CO': (-104.9903, 39.7392),
         'Bismarck, ND': (-100.773703, 46.801942),
         'Chicago ,IL' : (-87.3954, 41.520480),
         'Washington, DC': (-77.0369, 38.9072)}
-
-# Function to determine which data source to use based on year
-# Change the return files to match your grid size
 
 # Maps America
 def draw_geography(ax):
@@ -113,7 +111,7 @@ def draw_pper_map(pper_subset, map_title, map_color_scale, map_colors):
     mmp = ax.pcolormesh(lons, lats, res, zorder=6, 
                        cmap=cmap, norm=norm, transform=ccrs.PlateCarree())
     
-    # Add state lines above the data with more visible black color
+    # Add state lines above the data
     ax.add_feature(cfeature.STATES.with_scale('50m'), linewidth=1.0, edgecolor='black', zorder=7)
     
     labels = []
@@ -125,7 +123,7 @@ def draw_pper_map(pper_subset, map_title, map_color_scale, map_colors):
     
     return ax
 
-# Calculates the mean annual event days (now handles both NCEI and NOAA data)
+# Calculates the mean annual event days
 def calculate_mean_annual_days(storm_type, severity, start_year, end_year):
     start_date = datetime(start_year, 1, 1)
     end_date = datetime(end_year, 12, 31)
@@ -140,7 +138,6 @@ def calculate_mean_annual_days(storm_type, severity, start_year, end_year):
         month = current_date.month
         day = current_date.day
 
-        # Use the new function to get the appropriate data path
         csv_path = get_data_path(storm_type, year, month, day)
         
         if not os.path.exists(csv_path):
@@ -157,7 +154,7 @@ def calculate_mean_annual_days(storm_type, severity, start_year, end_year):
             total_days_above_threshold += pph_daily
             days_processed += 1
             
-            # Track which data source was used
+            # Tracking if NCEI or NOAA
             if year <= 2024:
                 ncei_days += 1
             else:
@@ -199,7 +196,7 @@ def plot_pph_analysis(start_year, end_year, storm_configs):
     }
     
     # Adjust scales depending on your grid type. 
-    # Current sizing is for 40km NAM-212 grid
+    # Currently below is grid sizes for NAM212 40km 
     scales = {
         'torn': {
             0.05: [0.025, .5, 2, 3, 4, 5, 100],
@@ -215,7 +212,7 @@ def plot_pph_analysis(start_year, end_year, storm_configs):
             0.60: [0.0125, .5, 1, 2, 2.5, 3, 100]
         }
     }
-    
+
     storm_names = {
         'torn': 'Tornado',
         'hail': 'Hail', 
@@ -242,7 +239,6 @@ def plot_pph_analysis(start_year, end_year, storm_configs):
             data = calculate_mean_annual_days(storm_type, severity, start_year, end_year)
             
             if data is not None:
-                # Convert to xarray DataArray
                 dsub = xr.DataArray(data, dims=['y', 'x'])
                 
                 # Find maximum locations
@@ -255,12 +251,12 @@ def plot_pph_analysis(start_year, end_year, storm_configs):
                 fig = plt.figure(figsize=(15, 15))
                 ax = draw_pper_map(dsub, title, pper_scale, dy_colors)
 
-                # Mark maximum locations with larger, bolder crosses
+                # Mark maximum locations
                 for i in range(len(y_max)):
                     ax.plot(lons[y_max[i], x_max[i]], lats[y_max[i], x_max[i]], "k+", 
                            mew=3, ms=20, transform=ccrs.PlateCarree(), zorder=20)
                 
-                # Add cities with larger markers
+                # Add cities with markers
                 for city_name, city_loc in cities.items():
                     ax.plot(city_loc[0], city_loc[1], 'w.', markersize=20, 
                            transform=from_proj, zorder=10)
@@ -275,9 +271,7 @@ def plot_pph_analysis(start_year, end_year, storm_configs):
                 txt = ax.text(maxlab_x, maxlab_y, "Max (+): {:.2f}".format(float(max_val)), 
                       transform=ax.transAxes, fontsize=25, 
                       bbox=dict(facecolor='w', edgecolor='k', boxstyle='round'), zorder=15)
-                
-                # Image saving line removed - plots will only display, not save
-                
+                            
                 plt.show()
                 plt.close()
             else:
