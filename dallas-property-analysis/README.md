@@ -28,3 +28,11 @@ Missing
 - roof types
 - The rest of construction dates
 - building height
+
+### Dependencies
+Python Libraries:
+* geopandas
+* pandas
+* shapely
+* json
+* matplotlib
