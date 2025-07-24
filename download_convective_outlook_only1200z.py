@@ -17,7 +17,7 @@ output_dir = 'convective_outlooks_only1200z'
 os.makedirs(output_dir, exist_ok=True)
 
 # loop through all the pages in the archive
-for year_use in range(2024, 2010, -1):
+for year_use in range(2024, 2009, -1):
     year_dir = os.path.join(output_dir, str(year_use))
     os.makedirs(year_dir, exist_ok=True)
     
