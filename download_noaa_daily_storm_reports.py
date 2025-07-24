@@ -85,3 +85,4 @@ for year_use in range(25, 3, -1):
               monthly_vals[storm_type] = monthly_vals[storm_type].reset_index(drop = True)
         monthly_vals[storm_type].to_csv(os.path.join(stm_dir, storm_type + '_' + str(month_use + 1) + '_20' + str(year_use).zfill(2) + '.csv'))
         print(str(len(monthly_vals[storm_type].index)) + ' ' + storm_type + ' entries on : 20' + str(year_use).zfill(2) + ' ' + str(month_use + 1))
+

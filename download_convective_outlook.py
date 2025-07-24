@@ -1,60 +1,148 @@
-import requests
-import csv
-import zipfile
-import io
+# -*- coding: utf-8 -*-
+"""
+Created on Mon Apr 28 13:38:26 2025
+
+@author: amonkar
+
+The objective of this script is to download the Strom Reports data from 1950-2024. 
+The data are downloaded as individual zip files for each year. 
+The files are unziped and the zipped files are deleted (Optional Key-Flag)
+A single CSV file is compiled which consists of the Hail, Tornado and other reports from 1950-2021
+
+The following will be customized
+1. Working directory. Set location based on your folder structure. 
+2. The file_pattern, the last number thread refers to the date when the files were updated. The current version c20250401 refers to the last updated on April 1st 2025. 
+3. When NCEI updates they change the updatetime in their zip files so you might have to update them if it is showing "404 Client Error: Not Found for url"
+
+f"StormEvents_details-ftp_v1.0_d{year}_c{updatetime}.csv.gz
+
+Go here to check the extension name: https://www.ncei.noaa.gov/pub/data/swdi/stormevents/csvfiles/
+
+To Dos:- 
+1. Confirm list of the SCS related event types - Done Jim
+    List: Hail, High Wind, Strong Wind, Thunderstorm Wind, Tornado
+
+
+
+"""
+#%%
+# Load necessary libraries
 import os
-import time
+import requests
+import gzip
+import shutil
+import pandas as pd
+from tqdm import tqdm  # For progress tracking
 
-url = 'https://spc.noaa.gov/products/outlook/archive/'
-# create directory to store downloaded data files
-output_dir = 'convective_outlooks'
-os.makedirs(output_dir, exist_ok = True)
 
-# loop through all the pages in the archive
-for year_use in range(2025, 2000, -1):
-  year_dir = os.path.join(output_dir, str(year_use))
-  os.makedirs(year_dir, exist_ok = True)
-  for month_use in range(0, 12):
-    month_dir = os.path.join(year_dir, str(month_use + 1))
-    os.makedirs(month_dir, exist_ok = True)
-    file_read_failure = []
-    for day_use in range(0, 31):
-      date_script = str(year_use).zfill(4) + str(month_use + 1).zfill(2) + str(day_use + 1).zfill(2)
-      print(year_use, end = " ")
-      print(month_use, end = " ")
-      print(day_use)
-      for forecast_day in range(0, 8):
-        forecast_script = 'day' + str(forecast_day + 1) + 'otlk_'
-        for forecast_time in range(0, 24):
-          for minute_use in ['00', '30']:
-            forecast_check_top = str(forecast_time).zfill(2) + minute_use
-            full_url = url + '/' + str(year_use).zfill(4) + '/' + forecast_script + date_script + '_' + forecast_check_top + '-shp.zip'
-            # for each page, make a new request to the API
-            file_found = True
-            try:
-              response = requests.get(full_url)
-            except:
-              file_found = False
-            if response.status_code == 200 and file_found:
-              file_found = True
-              try:
-                z = zipfile.ZipFile(io.BytesIO(response.content))
-              except:
-                # this will error if you are rate limited by ERCOT
-                # API (in which case increase time.sleep(X) value of X
-                file_found = False
-            
-              # if data exists, store in directory
-              if file_found:
-                forecast_dir = os.path.join(month_dir, 'forecast_day' + str(forecast_day + 1))
-                hour_dir = os.path.join(forecast_dir, forecast_script + date_script + '_' + forecast_check_top)
-                os.makedirs(forecast_dir, exist_ok = True)
-                os.makedirs(hour_dir, exist_ok = True)
-                z.extractall(hour_dir)
-              else:
-                # make note of any file that did not download
-                file_read_failure.append(filename)
-                with open('file_read_errors_' + str(year_use) + '_' + str(month_use + 1) +'.txt', 'w') as file:
-                  for item in file_read_failure:
-                    file.write(f"{item}\n")
-                
+# Set the working directory path
+working_directory = r'/USERS/jimnguyen/IRMII/SCS_API' #Set to your folder pathway
+os.chdir(working_directory)
+
+
+# Check if the storm directory exists
+data_dir = "NCEI_storm_reports"
+if not os.path.exists(data_dir):
+    os.makedirs(data_dir)
+    print(f"Created directory: {data_dir}")
+else:
+    print(f"Directory already exists: {data_dir}")
+
+
+#%% DOWNLOAD THE STORM REPORTS DATASET
+
+# Define the year range (Note:- The current year is not available)
+start_year = 1950
+end_year = 2025
+
+# Loop through each year to download and process data
+for year in range(start_year, end_year):
+
+    # Construct the URL for the current year
+    base_url = "https://www.ncei.noaa.gov/pub/data/swdi/stormevents/csvfiles/"
+    file_pattern = f"StormEvents_details-ftp_v1.0_d{year}_c20250520.csv.gz"  #Note this URL might/change change so update accordingly
+
+    if year == 2020:
+        file_pattern = f"StormEvents_details-ftp_v1.0_d{year}_c20250702.csv.gz"
+
+
+    elif year == 2022 or year == 2024 or year == 2025:
+        file_pattern = f"StormEvents_details-ftp_v1.0_d{year}_c20250721.csv.gz"
+
+    # Combine the URLs
+    year_url = base_url + file_pattern
+
+    # File paths
+    zip_file = f"NCEI_Storm_Reports/StormEvents_{year}.csv.gz"
+    csv_file = f"NCEI_Storm_Reports/Storm_Reports_{year}.csv"
+
+    # Try to download the file
+    try:
+        # Download the file
+        print(f"Downloading data for {year}...")
+        response = requests.get(year_url, stream=True)
+        response.raise_for_status()  # Raise an exception for HTTP errors
+
+        # Save the downloaded file
+        with open(zip_file, 'wb') as f:
+            for chunk in response.iter_content(chunk_size=8192):
+                f.write(chunk)
+
+        # Extract the gzipped file
+        with gzip.open(zip_file, 'rb') as f_in:
+            with open(csv_file, 'wb') as f_out:
+                shutil.copyfileobj(f_in, f_out)
+
+        print(f"Successfully downloaded and processed data for {year}")
+
+    except Exception as e:
+        # If there's an error (e.g., file not found), print a message
+        print(f"Error processing year {year}: {str(e)}")
+
+print("Download process completed.")
+
+#%% Identity the event types across the years 
+# The goal is to identify the event types assocaited with SCS events.
+event_types_by_year = set()
+
+for year in range(start_year, end_year):
+
+    print(year)
+
+    # Read the CSV file
+    reports = pd.read_csv(f"NCEI_Storm_Reports/Storm_Reports_{year}.csv")
+
+    #Identify the unique storm tyes for that year
+    event_types = reports['EVENT_TYPE'].unique()
+
+    #Add to the main list
+    event_types_by_year.update(event_types)
+
+
+#Create the list of event types which qualify as SCS events
+#Note:- Additional information on the storm reports classification is present here - https://www.ncdc.noaa.gov/stormevents/pd01016005curr.pdf
+SCS_events = ['Hail','High Wind','Strong Wind','Thunderstorm Wind', 'Tornado']
+
+
+#%% Create a single dataframe
+combined_scs_report = []
+
+# Subset to SCS Events types (Manually added above) -- CONFIRM TBD
+for year in range(start_year, end_year):
+    print(f"{year}...") 
+    reports = pd.read_csv(f"NCEI_Storm_Reports/Storm_Reports_{year}.csv") 
+    filtered_reports = reports[reports['EVENT_TYPE'].isin(SCS_events)]
+    combined_scs_report.append(filtered_reports)
+
+#Combine the reports
+combined_reports = pd.concat(combined_scs_report, ignore_index=True)   
+combined_reports.to_csv("NCEI_storm_reports/All_SCS_Reports.csv", index=False) 
+
+
+# Calculate the fraction (percentage) of each event type
+event_counts = combined_reports['EVENT_TYPE'].value_counts()
+total_events = len(combined_reports)
+event_fractions = round(100*event_counts / total_events,2)
+
+
+
