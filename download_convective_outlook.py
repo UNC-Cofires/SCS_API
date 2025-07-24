@@ -1,148 +1,93 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Mon Apr 28 13:38:26 2025
-
-@author: amonkar
-
-The objective of this script is to download the Strom Reports data from 1950-2024. 
-The data are downloaded as individual zip files for each year. 
-The files are unziped and the zipped files are deleted (Optional Key-Flag)
-A single CSV file is compiled which consists of the Hail, Tornado and other reports from 1950-2021
-
-The following will be customized
-1. Working directory. Set location based on your folder structure. 
-2. The file_pattern, the last number thread refers to the date when the files were updated. The current version c20250401 refers to the last updated on April 1st 2025. 
-3. When NCEI updates they change the updatetime in their zip files so you might have to update them if it is showing "404 Client Error: Not Found for url"
-
-f"StormEvents_details-ftp_v1.0_d{year}_c{updatetime}.csv.gz
-
-Go here to check the extension name: https://www.ncei.noaa.gov/pub/data/swdi/stormevents/csvfiles/
-
-To Dos:- 
-1. Confirm list of the SCS related event types - Done Jim
-    List: Hail, High Wind, Strong Wind, Thunderstorm Wind, Tornado
-
-
-
-"""
-#%%
-# Load necessary libraries
-import os
 import requests
-import gzip
-import shutil
-import pandas as pd
-from tqdm import tqdm  # For progress tracking
+import csv
+import zipfile
+import io
+import os
+import time
+import sys
 
+url = 'https://spc.noaa.gov/products/outlook/archive/'
+output_dir = 'convective_outlooks'
+os.makedirs(output_dir, exist_ok=True)
 
-# Set the working directory path
-working_directory = r'/USERS/jimnguyen/IRMII/SCS_API' #Set to your folder pathway
-os.chdir(working_directory)
+# This is the same as the read_convective_outlook_api.py the only difference is that
+# You can specify the year month date to start downloading from
+# Or if you leave it blank then it auto detects your directory and see what you need to download for
+# when you left it interrupted and it haven't finished downloading everything
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Parse command-line arguments:
+#
+# - If you call “python3 read_convective_outlook.py 2025 4 7”, sys.argv == ['read_convective_outlook.py', '2025', '4', '7'].
+#   We treat that as: start_year=2025, start_month=4, start_day=7.
+# - If you call “python3 read_convective_outlook.py 2025”, sys.argv == ['read_convective_outlook.py', '2025'].
+#   We treat that as: download only year 2025, starting from Jan 1 of that year.
+# - If you call “python3 read_convective_outlook.py all” (or no args), sys.argv length is 1 or ['read_convective_outlook.py','all'].
+#   We treat that as “download everything (2025 → 2001) starting from Jan 1, 2025.”
+# ─────────────────────────────────────────────────────────────────────────────
 
-# Check if the storm directory exists
-data_dir = "NCEI_storm_reports"
-if not os.path.exists(data_dir):
-    os.makedirs(data_dir)
-    print(f"Created directory: {data_dir}")
-else:
-    print(f"Directory already exists: {data_dir}")
+start_year = None
+start_month = None
+start_day = None
 
-
-#%% DOWNLOAD THE STORM REPORTS DATASET
-
-# Define the year range (Note:- The current year is not available)
-start_year = 1950
-end_year = 2025
-
-# Loop through each year to download and process data
-for year in range(start_year, end_year):
-
-    # Construct the URL for the current year
-    base_url = "https://www.ncei.noaa.gov/pub/data/swdi/stormevents/csvfiles/"
-    file_pattern = f"StormEvents_details-ftp_v1.0_d{year}_c20250520.csv.gz"  #Note this URL might/change change so update accordingly
-
-    if year == 2020:
-        file_pattern = f"StormEvents_details-ftp_v1.0_d{year}_c20250702.csv.gz"
-
-
-    elif year == 2022 or year == 2024 or year == 2025:
-        file_pattern = f"StormEvents_details-ftp_v1.0_d{year}_c20250721.csv.gz"
-
-    # Combine the URLs
-    year_url = base_url + file_pattern
-
-    # File paths
-    zip_file = f"NCEI_Storm_Reports/StormEvents_{year}.csv.gz"
-    csv_file = f"NCEI_Storm_Reports/Storm_Reports_{year}.csv"
-
-    # Try to download the file
+if len(sys.argv) == 2 and sys.argv[1].lower() != 'all':
+    # Only one numeric argument: that’s the year
     try:
-        # Download the file
-        print(f"Downloading data for {year}...")
-        response = requests.get(year_url, stream=True)
-        response.raise_for_status()  # Raise an exception for HTTP errors
+        start_year = int(sys.argv[1])
+        start_month = 1
+        start_day = 1
+    except ValueError:
+        print(f"Invalid year: {sys.argv[1]}")
+        sys.exit(1)
 
-        # Save the downloaded file
-        with open(zip_file, 'wb') as f:
-            for chunk in response.iter_content(chunk_size=8192):
-                f.write(chunk)
+elif len(sys.argv) == 4:
+    # Three arguments: year, month, day
+    try:
+        start_year  = int(sys.argv[1])
+        start_month = int(sys.argv[2])
+        start_day   = int(sys.argv[3])
+    except ValueError:
+        print(f"Invalid arguments: {sys.argv[1:]}")
+        sys.exit(1)
 
-        # Extract the gzipped file
-        with gzip.open(zip_file, 'rb') as f_in:
-            with open(csv_file, 'wb') as f_out:
-                shutil.copyfileobj(f_in, f_out)
+else:
+    # Either “all” or no args → download full range
+    start_year  = None
+    start_month = 1
+    start_day   = 1
 
-        print(f"Successfully downloaded and processed data for {year}")
+if start_year is None:
+    years_to_download = range(2025, 2000, -1)
+else:
+    # If user gave a starting year, run from that year down to 2001
+    years_to_download = range(start_year, 2000, -1)
 
-    except Exception as e:
-        # If there's an error (e.g., file not found), print a message
-        print(f"Error processing year {year}: {str(e)}")
+for year_use in years_to_download:
+    year_dir = os.path.join(output_dir, str(year_use))
+    os.makedirs(year_dir, exist_ok=True)
 
-print("Download process completed.")
-
-#%% Identity the event types across the years 
-# The goal is to identify the event types assocaited with SCS events.
-event_types_by_year = set()
-
-for year in range(start_year, end_year):
-
-    print(year)
-
-    # Read the CSV file
-    reports = pd.read_csv(f"NCEI_Storm_Reports/Storm_Reports_{year}.csv")
-
-    #Identify the unique storm tyes for that year
-    event_types = reports['EVENT_TYPE'].unique()
-
-    #Add to the main list
-    event_types_by_year.update(event_types)
-
-
-#Create the list of event types which qualify as SCS events
-#Note:- Additional information on the storm reports classification is present here - https://www.ncdc.noaa.gov/stormevents/pd01016005curr.pdf
-SCS_events = ['Hail','High Wind','Strong Wind','Thunderstorm Wind', 'Tornado']
-
-
-#%% Create a single dataframe
-combined_scs_report = []
-
-# Subset to SCS Events types (Manually added above) -- CONFIRM TBD
-for year in range(start_year, end_year):
-    print(f"{year}...") 
-    reports = pd.read_csv(f"NCEI_Storm_Reports/Storm_Reports_{year}.csv") 
-    filtered_reports = reports[reports['EVENT_TYPE'].isin(SCS_events)]
-    combined_scs_report.append(filtered_reports)
-
-#Combine the reports
-combined_reports = pd.concat(combined_scs_report, ignore_index=True)   
-combined_reports.to_csv("NCEI_storm_reports/All_SCS_Reports.csv", index=False) 
+    #Detect highest existing month-folder under convective_outlooks/<year_use>/
+    existing_months = []
+    for name in os.listdir(year_dir):
+        if name.isdigit():
+            existing_months.append(int(name))
+    if existing_months:
+        first_month_index = max(existing_months) - 1
+        print(f"Resuming Year {year_use} at month {max(existing_months)} (zero‐based index {first_month_index})")
+    else:
+        first_month_index = 0
+        print(f"No existing months for Year {year_use}; starting at month 1")
 
 
-# Calculate the fraction (percentage) of each event type
-event_counts = combined_reports['EVENT_TYPE'].value_counts()
-total_events = len(combined_reports)
-event_fractions = round(100*event_counts / total_events,2)
+    for month_index in range(first_month_index, 12):
+        month_use = month_index
+        month_dir = os.path.join(year_dir, str(month_use + 1))
+        os.makedirs(month_dir, exist_ok=True)
 
-
-
+        for day_index in range(0, 31):
+            date_script = (
+                f"{year_use:04d}"
+                f"{month_index+1:02d}"
+                f"{day_index+1:02d}"
+            )
+            print(f"Processing → Year {year_use}, Month {month_index+1}, Day {day_index+1}")
