@@ -6,10 +6,11 @@ import pandas as pd
 import numpy as np
 
 url = 'https://spc.noaa.gov/climo/reports/'
-os.makedirs('tornado_reports', exist_ok = True)
-os.makedirs('wind_reports', exist_ok = True)
-os.makedirs('hail_reports', exist_ok = True)
-storm_types = ['torn', 'hail', 'wind']
+os.makedirs('daily_reports/tornado_reports', exist_ok = True)
+os.makedirs('daily_reports/wind_reports', exist_ok = True)
+os.makedirs('daily_reports/hail_reports', exist_ok = True)
+storm_types = ['torn', 'hail', 'wind',]
+#SCS_events = ['Hail','High Wind','Strong Wind','Thunderstorm Wind', 'Tornado']
 storm_dir_names = ['tornado_reports', 'wind_reports', 'hail_reports']
 default_header = ['Time', 'F-Scale', 'Location', 'County', 'State', 'Lat', 'Lon', 'Comments']
 retry_counter = 0
