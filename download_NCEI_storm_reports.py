@@ -12,10 +12,17 @@ A single CSV file is compiled which consists of the Hail, Tornado and other repo
 The following will be customized
 1. Working directory. Set location based on your folder structure. 
 2. The file_pattern, the last number thread refers to the date when the files were updated. The current version c20250401 refers to the last updated on April 1st 2025. 
+3. When NCEI updates they change the updatetime in their zip files so you might have to update them if it is showing "404 Client Error: Not Found for url"
+
+f"StormEvents_details-ftp_v1.0_d{year}_c{updatetime}.csv.gz
+
+Go here to check the extension name: https://www.ncei.noaa.gov/pub/data/swdi/stormevents/csvfiles/
 
 To Dos:- 
 1. Confirm list of the SCS related event types - Done Jim
     List: Hail, High Wind, Strong Wind, Thunderstorm Wind, Tornado
+
+
 
 """
 #%%
@@ -29,11 +36,12 @@ from tqdm import tqdm  # For progress tracking
 
 
 # Set the working directory path
-working_directory = r'IRMII/SCS_API' #Set to your folder pathway
+working_directory = r'/USERS/jimnguyen/IRMII/SCS_API' #Set to your folder pathway
 os.chdir(working_directory)
 
+
 # Check if the storm directory exists
-data_dir = "data/Storm_Reports"
+data_dir = "NCEI_storm_reports"
 if not os.path.exists(data_dir):
     os.makedirs(data_dir)
     print(f"Created directory: {data_dir}")
@@ -49,40 +57,44 @@ end_year = 2025
 
 # Loop through each year to download and process data
 for year in range(start_year, end_year):
-  
+
     # Construct the URL for the current year
     base_url = "https://www.ncei.noaa.gov/pub/data/swdi/stormevents/csvfiles/"
-    file_pattern = f"StormEvents_details-ftp_v1.0_d{year}_c20250401.csv.gz"  #Note this URL might/change change so update accordingly
-    
+    file_pattern = f"StormEvents_details-ftp_v1.0_d{year}_c20250520.csv.gz"  #Note this URL might/change change so update accordingly
+
     if year == 2020:
-        file_pattern = f"StormEvents_details-ftp_v1.0_d{year}_c20240620.csv.gz"
-    
+        file_pattern = f"StormEvents_details-ftp_v1.0_d{year}_c20250702.csv.gz"
+
+
+    elif year == 2022 or year == 2024 or year == 2025:
+        file_pattern = f"StormEvents_details-ftp_v1.0_d{year}_c20250721.csv.gz"
+
     # Combine the URLs
     year_url = base_url + file_pattern
-    
+
     # File paths
-    zip_file = f"data/Storm_Reports/StormEvents_{year}.csv.gz"
-    csv_file = f"data/Storm_Reports/Storm_Reports_{year}.csv"
-    
+    zip_file = f"NCEI_Storm_Reports/StormEvents_{year}.csv.gz"
+    csv_file = f"NCEI_Storm_Reports/Storm_Reports_{year}.csv"
+
     # Try to download the file
     try:
         # Download the file
         print(f"Downloading data for {year}...")
         response = requests.get(year_url, stream=True)
         response.raise_for_status()  # Raise an exception for HTTP errors
-        
+
         # Save the downloaded file
         with open(zip_file, 'wb') as f:
             for chunk in response.iter_content(chunk_size=8192):
                 f.write(chunk)
-        
+
         # Extract the gzipped file
         with gzip.open(zip_file, 'rb') as f_in:
             with open(csv_file, 'wb') as f_out:
                 shutil.copyfileobj(f_in, f_out)
-        
+
         print(f"Successfully downloaded and processed data for {year}")
-        
+
     except Exception as e:
         # If there's an error (e.g., file not found), print a message
         print(f"Error processing year {year}: {str(e)}")
@@ -94,23 +106,23 @@ print("Download process completed.")
 event_types_by_year = set()
 
 for year in range(start_year, end_year):
-    
+
     print(year)
-    
+
     # Read the CSV file
-    reports = pd.read_csv(f"data/Storm_Reports/Storm_Reports_{year}.csv")
-    
+    reports = pd.read_csv(f"NCEI_Storm_Reports/Storm_Reports_{year}.csv")
+
     #Identify the unique storm tyes for that year
     event_types = reports['EVENT_TYPE'].unique()
-    
+
     #Add to the main list
     event_types_by_year.update(event_types)
-    
+
 
 #Create the list of event types which qualify as SCS events
 #Note:- Additional information on the storm reports classification is present here - https://www.ncdc.noaa.gov/stormevents/pd01016005curr.pdf
 SCS_events = ['Hail','High Wind','Strong Wind','Thunderstorm Wind', 'Tornado']
-    List: Hail, High Wind, Strong Wind, Thunderstorm Wind, Tornado
+
 
 #%% Create a single dataframe
 combined_scs_report = []
@@ -118,30 +130,18 @@ combined_scs_report = []
 # Subset to SCS Events types (Manually added above) -- CONFIRM TBD
 for year in range(start_year, end_year):
     print(f"{year}...") 
-    reports = pd.read_csv(f"data/Storm_Reports/Storm_Reports_{year}.csv") 
+    reports = pd.read_csv(f"NCEI_Storm_Reports/Storm_Reports_{year}.csv") 
     filtered_reports = reports[reports['EVENT_TYPE'].isin(SCS_events)]
     combined_scs_report.append(filtered_reports)
-    
+
 #Combine the reports
 combined_reports = pd.concat(combined_scs_report, ignore_index=True)   
-combined_reports.to_csv("data/All_SCS_Reports.csv", index=False) 
+combined_reports.to_csv("NCEI_storm_reports/All_SCS_Reports.csv", index=False) 
 
 
 # Calculate the fraction (percentage) of each event type
 event_counts = combined_reports['EVENT_TYPE'].value_counts()
 total_events = len(combined_reports)
 event_fractions = round(100*event_counts / total_events,2)
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
+
+
