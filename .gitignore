@@ -179,6 +179,7 @@ hail_reports/
 wind_reports/
 tornado_reports/
 convective_outlooks_only1200z/
+cache/
 
 *.csv
 *.gz
