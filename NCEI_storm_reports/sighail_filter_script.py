@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 
 DATA_DIR = '/Users/jimnguyen/IRMII/SCS_API/NCEI_storm_reports'
-OUTPUT_DIR = os.path.join(DATA_DIR, 'hail_filtered')
+OUTPUT_DIR = os.path.join(DATA_DIR, 'sighail_filtered')
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 KEEP_TYPES = ['Hail']
@@ -35,6 +35,11 @@ for year in range(2010, 2025):
     if len(df_hail) == 0:
         print(f"Year {year}: No hail events found")
         continue
+    # Filter for magnitude 2 or above (handle missing/NaN values)
+    df_hail = df_hail[
+        (pd.to_numeric(df_hail['MAGNITUDE'], errors='coerce') >= 2) & 
+        (df_hail['MAGNITUDE'].notna())
+    ].copy()
     
     # Filter for columns that exist
     cols_existing = [c for c in COLUMNS_TO_KEEP if c in df_hail.columns]
@@ -65,12 +70,12 @@ for year in range(2010, 2025):
     # df.drop('col2', axis=1, inplace=True)
     df_hail = df_hail.drop(columns=['BEGIN_LAT','BEGIN_LON','END_LAT','END_LON'])
 
-    
+
     # Optional: Drop original coordinate columns if you only want averaged ones
     # df_hail = df_hail.drop(columns=['BEGIN_LAT', 'BEGIN_LON', 'END_LAT', 'END_LON'])
     
     # Save the filtered data
-    outfile = f"Hail_Reports_{year}.csv"
+    outfile = f"Sighail_Reports_{year}.csv"
     outpath = os.path.join(OUTPUT_DIR, outfile)
     df_hail.to_csv(outpath, index=False)
     
