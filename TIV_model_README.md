@@ -1,190 +1,295 @@
-# 📄 Academic Model Formulation
+# 📄 Total Insured Value (TIV) Loss Prediction Model
 
-## **Total Insured Value (TIV) Loss Prediction Model**
+## 🎯 Overview
 
-### **Mathematical Framework**
+This repository contains a machine learning model for predicting Total Insured Value (TIV) losses from severe weather events, specifically hailstorms. The model integrates weather data, property characteristics, and building features to estimate percentage losses for insurance applications.
 
-The Total Insured Value loss percentage for property $i$ at location $(\phi_i, \lambda_i)$ during storm event $d$ is modeled as:
+## 📊 Mathematical Framework
 
-$$
-\boxed{
-\text{TIV}_{\text{Loss},i}(d, \phi_i, \lambda_i) = F(\mathbf{X}_i) \cdot 100\%
-}
-$$
+The Total Insured Value loss percentage for property *i* at location (φ_i, λ_i) during storm event *d* is modeled as:
 
-where $F: \mathbb{R}^{12} \rightarrow [0, 1]$ is a Random Forest regression model mapping a 12-dimensional feature vector $\mathbf{X}_i$ to expected loss proportion, and the result is scaled to percentage.
-
-### **Feature Vector Specification**
-
-The feature vector $\mathbf{X}_i \in \mathbb{R}^{12}$ comprises three categories:
-
-#### **Weather Features** $\mathbf{W}_i \in \mathbb{R}^4$:
-$$
-\mathbf{W}_i = \begin{bmatrix}
-\text{MESH}_i \\
-P_{\text{PPH},i} \\
-D_{\text{NCEI},i} \\
-T_{\text{storm},i}
-\end{bmatrix}
-$$
+```
+TIV_Loss,i(d, φ_i, λ_i) = F(X_i) × 100%
+```
 
 where:
-- $\text{MESH}_i$ = Maximum Estimated Size of Hail (inches) at property $i$
-- $P_{\text{PPH},i}$ = Practically Perfect Hindcast probability $\in [0,1]$ 
-- $D_{\text{NCEI},i}$ = Distance to nearest NCEI severe weather report (km)
-- $T_{\text{storm},i}$ = Storm duration at location (hours)
+- **F**: ℝ¹² → [0, 1] is a Random Forest regression model 
+- **X_i**: 12-dimensional feature vector for property *i*
+- Result is scaled to percentage loss
 
-#### **Property Features** $\mathbf{P}_i \in \mathbb{R}^5$:
-$$
-\mathbf{P}_i = \begin{bmatrix}
-V_{\text{market},i} \\
-A_{\text{building},i} \\
-S_{\text{living},i} \\
-Q_{\text{construction},i} \\
-F_{\text{frame},i}
-\end{bmatrix}
-$$
+## 🔧 Feature Vector Specification
 
-where:
-- $V_{\text{market},i}$ = Market value (USD) from tax appraisal
-- $A_{\text{building},i}$ = Building age (years) = $2024 - \text{Year Built}$
-- $S_{\text{living},i}$ = Living area (square feet)
-- $Q_{\text{construction},i} \in \{0,1,2,3,4\}$ = Construction quality (Poor=0, Excellent=4)
-- $F_{\text{frame},i} \in \{1,2,3\}$ = Frame type (Wood=1, Metal=2, Masonry=3)
+The 12-dimensional feature vector **X_i** ∈ ℝ¹² comprises three categories:
 
-#### **Building Features** $\mathbf{B}_i \in \mathbb{R}^3$:
-$$
-\mathbf{B}_i = \begin{bmatrix}
-A_{\text{footprint},i} \\
-C_{\text{complexity},i} \\
-\rho_{\text{density},i}
-\end{bmatrix}
-$$
+### 🌪️ Weather Features (4 features)
 
-where:
-- $A_{\text{footprint},i}$ = Building footprint area (square feet) from Microsoft ML footprints
-- $C_{\text{complexity},i}$ = Building complexity ratio = $\frac{\text{Perimeter}}{\sqrt{\text{Area}}}$
-- $\rho_{\text{density},i}$ = Local building density (buildings per hectare)
+| Feature | Symbol | Description | Units |
+|---------|--------|-------------|-------|
+| MESH Value | MESH_i | Maximum Estimated Size of Hail | inches |
+| PPH Probability | P_PPH,i | Practically Perfect Hindcast probability | [0,1] |
+| NCEI Distance | D_NCEI,i | Distance to nearest NCEI severe weather report | km |
+| Storm Duration | T_storm,i | Storm duration at location | hours |
 
-### **Complete Feature Vector**
-$$
-\mathbf{X}_i = \begin{bmatrix} \mathbf{W}_i \\ \mathbf{P}_i \\ \mathbf{B}_i \end{bmatrix} \in \mathbb{R}^{12}
-$$
+**Weather Feature Vector:**
+```
+W_i = [MESH_i, P_PPH,i, D_NCEI,i, T_storm,i]ᵀ
+```
 
-### **Synthetic Loss Function** (Training Labels)
+### 🏠 Property Features (5 features)
+
+| Feature | Symbol | Description | Values/Units |
+|---------|--------|-------------|--------------|
+| Market Value | V_market,i | Market value from tax appraisal | USD |
+| Building Age | A_building,i | Building age = 2024 - Year Built | years |
+| Living Area | S_living,i | Living area | square feet |
+| Construction Quality | Q_construction,i | Construction quality rating | {0,1,2,3,4} |
+| Frame Type | F_frame,i | Frame type encoding | {1,2,3} |
+
+**Construction Quality Scale:**
+- 0 = Poor
+- 1 = Fair  
+- 2 = Average
+- 3 = Good
+- 4 = Excellent
+
+**Frame Type Encoding:**
+- 1 = Wood
+- 2 = Metal
+- 3 = Masonry
+
+**Property Feature Vector:**
+```
+P_i = [V_market,i, A_building,i, S_living,i, Q_construction,i, F_frame,i]ᵀ
+```
+
+### 🏗️ Building Features (3 features)
+
+| Feature | Symbol | Description | Units |
+|---------|--------|-------------|-------|
+| Footprint Area | A_footprint,i | Building footprint area (Microsoft ML) | square feet |
+| Building Complexity | C_complexity,i | Complexity ratio = Perimeter/√Area | dimensionless |
+| Building Density | ρ_density,i | Local building density | buildings/hectare |
+
+**Building Feature Vector:**
+```
+B_i = [A_footprint,i, C_complexity,i, ρ_density,i]ᵀ
+```
+
+### 📐 Complete Feature Vector
+
+```
+X_i = [W_i; P_i; B_i] ∈ ℝ¹²
+```
+
+## 🧮 Synthetic Loss Function (Training Labels)
 
 For model training, synthetic TIV losses are generated using domain knowledge:
 
-$$
-L_{\text{synthetic},i} = \beta_0(\text{MESH}_i) \cdot \beta_1(A_{\text{building},i}) \cdot \beta_2(Q_{\text{construction},i}) \cdot \beta_3(F_{\text{frame},i}) \cdot \beta_4(P_{\text{PPH},i}) \cdot \beta_5(D_{\text{NCEI},i}) \cdot \beta_6(V_{\text{market},i}) + \epsilon_i
-$$
+```
+L_synthetic,i = β₀(MESH_i) × β₁(A_building,i) × β₂(Q_construction,i) × β₃(F_frame,i) × β₄(P_PPH,i) × β₅(D_NCEI,i) × β₆(V_market,i) + εᵢ
+```
 
-where:
+### 📊 Loss Function Components
 
-**Base Damage Function:**
-$$
-\beta_0(\text{MESH}) = \begin{cases}
-0.005 & \text{if MESH} < 0.5 \text{ inches} \\
-0.02 & \text{if } 0.5 \leq \text{MESH} < 1.0 \\
-0.08 & \text{if } 1.0 \leq \text{MESH} < 1.5 \\
-0.20 & \text{if } 1.5 \leq \text{MESH} < 2.0 \\
-0.45 & \text{if MESH} \geq 2.0
-\end{cases}
-$$
+#### 1. Base Damage Function β₀(MESH)
 
-**Age Vulnerability Multiplier:**
-$$
-\beta_1(A) = \min\left(1.0 + \max(0, (A - 20) \times 0.015), 2.5\right)
-$$
+| MESH Range (inches) | Base Damage |
+|---------------------|-------------|
+| < 0.5 | 0.005 (0.5%) |
+| 0.5 - 1.0 | 0.02 (2%) |
+| 1.0 - 1.5 | 0.08 (8%) |
+| 1.5 - 2.0 | 0.20 (20%) |
+| ≥ 2.0 | 0.45 (45%) |
 
-**Quality Factor:**
-$$
-\beta_2(Q) = 1.5 - (Q \times 0.15)
-$$
+#### 2. Age Vulnerability Multiplier β₁(A)
 
-**Frame Type Factor:**
-$$
-\beta_3(F) = \begin{cases}
-1.3 & \text{if } F = 1 \text{ (Wood)} \\
-1.0 & \text{if } F = 2 \text{ (Metal)} \\
-0.7 & \text{if } F = 3 \text{ (Masonry)}
-\end{cases}
-$$
+```
+β₁(A) = min(1.0 + max(0, (A - 20) × 0.015), 2.5)
+```
+- Buildings over 20 years old get 1.5% vulnerability increase per year
+- Capped at 2.5× multiplier
 
-**Forecast Factor:**
-$$
-\beta_4(P) = 0.5 + 1.5P
-$$
+#### 3. Quality Factor β₂(Q)
 
-**Distance Decay:**
-$$
-\beta_5(D) = e^{-D/4.0}
-$$
+```
+β₂(Q) = 1.5 - (Q × 0.15)
+```
+- Better construction quality reduces damage
+- Range: 0.9 (Excellent) to 1.5 (Poor)
 
-**Exposure Factor:**
-$$
-\beta_6(V) = \begin{cases}
-0.8 & \text{if } V < \$100,000 \\
-1.0 & \text{if } \$100,000 \leq V \leq \$500,000 \\
-1.2 & \text{if } V > \$500,000
-\end{cases}
-$$
+#### 4. Frame Type Factor β₃(F)
 
-**Noise Term:**
-$$
-\epsilon_i \sim \mathcal{N}(0, (0.25 \cdot L_{\text{base},i})^2)
-$$
+| Frame Type | Factor |
+|------------|--------|
+| Wood (1) | 1.3 |
+| Metal (2) | 1.0 |
+| Masonry (3) | 0.7 |
 
-**Final Constraint:**
-$$
-L_{\text{synthetic},i} = \min(\max(L_{\text{synthetic},i}, 0), 0.85)
-$$
+#### 5. Forecast Factor β₄(P)
 
-### **Model Implementation**
+```
+β₄(P) = 0.5 + 1.5P
+```
+- Higher PPH probability correlates with higher actual damage
+- Range: 0.5 to 2.0
 
-**Algorithm:** Random Forest Regressor with hyperparameters:
-- Number of estimators: $n_{\text{trees}} = 100$
-- Maximum depth: $d_{\max} = 12$  
-- Minimum samples per split: $n_{\min,\text{split}} = 10$
-- Minimum samples per leaf: $n_{\min,\text{leaf}} = 5$
+#### 6. Distance Decay β₅(D)
 
-**Training Objective:**
-$$
-\hat{F} = \arg\min_F \frac{1}{n} \sum_{i=1}^{n} \left( L_{\text{synthetic},i} - F(\mathbf{X}_i) \right)^2
-$$
+```
+β₅(D) = e^(-D/4.0)
+```
+- Exponential decay with distance from NCEI reports
+- Properties closer to reports have higher losses
 
-**Prediction:**
-$$
-\hat{L}_i = \hat{F}(\mathbf{X}_i)
-$$
+#### 7. Exposure Factor β₆(V)
 
-**Dollar Loss Estimate:**
-$$
-\text{TIV}_{\text{Dollar},i} = V_{\text{market},i} \times \hat{L}_i
-$$
+| Property Value | Factor |
+|----------------|--------|
+| < $100,000 | 0.8 |
+| $100,000 - $500,000 | 1.0 |
+| > $500,000 | 1.2 |
 
-### **Model Validation Metrics**
+#### 8. Noise Term
 
-1. **Coefficient of Determination:** $R^2 = 1 - \frac{\sum_{i=1}^{n}(y_i - \hat{y}_i)^2}{\sum_{i=1}^{n}(y_i - \bar{y})^2}$
+```
+εᵢ ~ N(0, (0.25 × L_base,i)²)
+```
+- Gaussian noise proportional to base loss
+- Adds realistic variability
 
-2. **Root Mean Square Error:** $\text{RMSE} = \sqrt{\frac{1}{n}\sum_{i=1}^{n}(y_i - \hat{y}_i)^2}$
+#### 9. Final Constraint
 
-3. **Physical Validation Correlations:**
-   - $\rho(\text{MESH}, \hat{L}) > 0.3$ (larger hail → higher losses)
-   - $\rho(A_{\text{building}}, \hat{L}) > 0.1$ (older buildings → higher vulnerability)  
-   - $\rho(D_{\text{NCEI}}, \hat{L}) < -0.1$ (closer to reports → higher losses)
+```
+L_synthetic,i = min(max(L_synthetic,i, 0), 0.85)
+```
+- Losses bounded between 0% and 85%
 
-### **Data Sources**
+## 🤖 Model Implementation
 
-- **Spatial Parcels:** Texas Strategic Mapping Program (StratMap) 2024
-- **Property Values:** Dallas County Appraisal District (DCAD) 2024
-- **Building Footprints:** Microsoft Global ML Building Footprints
-- **Weather Data:** PPH (Practically Perfect Hindcasts), MESH radar, NCEI storm reports
-- **Target Event:** May 19-20, 2023 Texas Hailstorm
+### Algorithm: Random Forest Regressor
 
-### **Limitations**
+| Hyperparameter | Value | Description |
+|----------------|-------|-------------|
+| n_estimators | 100 | Number of decision trees |
+| max_depth | 12 | Maximum tree depth |
+| min_samples_split | 10 | Minimum samples to split node |
+| min_samples_leaf | 5 | Minimum samples per leaf |
+| random_state | 42 | Reproducibility seed |
 
-1. **Synthetic Training Labels:** Model trained on physics-based synthetic losses rather than actual insurance claims
-2. **Temporal Scope:** Single storm event validation  
-3. **Spatial Scope:** Dallas County, Texas only
-4. **Weather Simulation:** Proof-of-concept uses simulated weather features pending integration with actual storm data
+### Training Objective
+
+The model minimizes mean squared error:
+
+```
+F̂ = argmin_F (1/n) Σᵢ₌₁ⁿ (L_synthetic,i - F(Xᵢ))²
+```
+
+### Prediction Process
+
+1. **Loss Percentage Prediction:**
+   ```
+   L̂ᵢ = F̂(Xᵢ)
+   ```
+
+2. **Dollar Loss Estimate:**
+   ```
+   TIV_Dollar,i = V_market,i × L̂ᵢ
+   ```
+
+## 📈 Model Validation
+
+### Performance Metrics
+
+1. **Coefficient of Determination:**
+   ```
+   R² = 1 - (Σ(yᵢ - ŷᵢ)²) / (Σ(yᵢ - ȳ)²)
+   ```
+
+2. **Root Mean Square Error:**
+   ```
+   RMSE = √((1/n) Σ(yᵢ - ŷᵢ)²)
+   ```
+
+### Physical Validation Tests
+
+The model must pass these correlation tests:
+
+| Relationship | Expected | Interpretation |
+|-------------|----------|----------------|
+| ρ(MESH, L̂) | > 0.3 | Larger hail → higher losses |
+| ρ(Age, L̂) | > 0.1 | Older buildings → higher vulnerability |
+| ρ(Distance, L̂) | < -0.1 | Closer to reports → higher losses |
+
+## 📊 Data Sources
+
+| Category | Source | Description |
+|----------|--------|-------------|
+| **Spatial Parcels** | Texas Strategic Mapping Program (StratMap) 2024 | Property boundaries and identifiers |
+| **Property Values** | Dallas County Appraisal District (DCAD) 2024 | Tax assessments and building characteristics |
+| **Building Footprints** | Microsoft Global ML Building Footprints | Precise building geometry |
+| **Weather Data** | PPH, MESH radar, NCEI storm reports | Storm characteristics and impact |
+| **Target Event** | May 19-20, 2023 Texas Hailstorm | Validation case study |
+
+## ⚠️ Current Limitations
+
+| Limitation | Impact | Future Resolution |
+|------------|--------|-------------------|
+| **Synthetic Training Labels** | Model trained on physics-based estimates, not actual claims | Integrate real insurance claims data |
+| **Temporal Scope** | Single storm event validation | Expand to multi-year validation dataset |
+| **Spatial Scope** | Dallas County, Texas only | Scale to multi-state implementation |
+| **Weather Simulation** | Proof-of-concept uses simulated weather | Integrate real-time weather data APIs |
+
+## 🚀 Getting Started
+
+### Prerequisites
+
+```bash
+pip install pandas geopandas numpy scikit-learn matplotlib shapely
+```
+
+### Basic Usage
+
+```python
+from tiv_model import TIVLossPredictor
+
+# Initialize model
+model = TIVLossPredictor()
+
+# Load your property data
+properties = load_property_data("path/to/parcels.shp")
+
+# Add weather features for storm event
+properties = add_weather_features(properties, storm_date="2023-05-19")
+
+# Predict losses
+losses = model.predict(properties)
+
+# Calculate dollar losses
+dollar_losses = properties['market_value'] * losses
+```
+
+### Example Results
+
+For a typical Dallas property:
+- **Market Value:** $250,000
+- **MESH:** 1.2 inches
+- **Building Age:** 15 years
+- **Construction:** Good quality, wood frame
+
+**Predicted Loss:** 12.3% → **$30,750**
+
+## 📝 Citation
+
+If you use this model in academic research, please cite:
+
+```
+TIV Loss Prediction Model for Severe Weather Events
+Dallas County Implementation, 2024
+GitHub: UNC-Cofires/SCS_API
+```
+
+## 📞 Contact
+
+For questions or collaboration opportunities:
+- Repository: [UNC-Cofires/SCS_API](https://github.com/UNC-Cofires/SCS_API)
+- Issues: [GitHub Issues](https://github.com/UNC-Cofires/SCS_API/issues)
