@@ -180,6 +180,10 @@ wind_reports/
 tornado_reports/
 convective_outlooks_only1200z/
 cache/
+parcel_data/
+
+
 
 *.csv
 *.gz
+*.geojson
