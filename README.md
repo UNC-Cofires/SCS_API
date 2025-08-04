@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-A comprehensive geospatial analysis system for severe convective storm hazards, designed to evaluate forecast skill through rigorous comparison of Practically Perfect Hindcasts (PPH) against operational Storm Prediction Center (SPC) convective outlooks. This framework processes multi-decadal datasets (2010-2024) to quantify forecasting performance using industry-standard verification metrics.
+A geospatial analysis system for severe convective storm hazards, designed to evaluate forecast skill through rigorous comparison of Practically Perfect Hindcasts (PPH) against operational Storm Prediction Center (SPC) convective outlooks. This framework processes multi-decadal datasets (2010-2024) to quantify forecasting performance using industry-standard verification metrics. The framework also includes a Total Insured Value Loss (TIVloss) model that is in development.
 
 
 ## Architecture
@@ -136,17 +136,17 @@ jupyter notebook hail_analysis.ipynb
 **Performance Regression**: Benchmark tests for core processing functions to detect performance degradation.
 
 
-## Architecture Decisions
+## Architecture
 
-### Grid System Choice
+### Grid
 
-**NAM212 Selection**: 40km resolution provides optimal balance between computational efficiency and meteorological relevance. Grid spacing matches SPC's operational verification standards.
+**NAM212**: 40km resolution provides optimal balance between computational efficiency and meteorological relevance. Grid spacing matches SPC's operational verification standards.
 
-**Projection Handling**: Robust conversion between Lambert Conformal Conic (pre-2020) and WGS84 (post-2020) coordinate systems ensures temporal consistency across projection changes.
+**Projection Handling**: Converts between Lambert Conformal Conic (2010-2019) and WGS84 (post-2020) coordinate systems ensures temporal consistency across projection changes.
 
 ### Verification Methodology
 
-**Fair Comparison Framework**: Identical validation sets and climatological baselines eliminate systematic bias in skill score comparisons.
+**Comparison Framework**: Identical validation sets and climatological baselines eliminate systematic bias in skill score comparisons.
 
 **Multi-Metric Approach**: Combines probabilistic (Brier Skill Score) and categorical (Performance Diagram) verification for comprehensive assessment.
 
