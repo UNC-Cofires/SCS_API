@@ -200,8 +200,6 @@ The TIV loss model implements a Random Forest regressor with the following mathe
 
 ### TIV Model Methodology
 
-**Synthetic Training Approach**: Model currently trained on physics-based synthetic loss labels rather than actual insurance claims, incorporating domain knowledge about hail damage patterns, building vulnerability, and exposure factors.
-
 **Feature Engineering**: 12-dimensional feature vectors combining meteorological data (MESH, PPH, storm proximity), property characteristics (value, age, construction), and spatial factors (building density, footprint complexity).
 
 **Machine Learning Architecture**: Random Forest regressor optimized for property-level loss prediction with hyperparameters tuned for generalization across property types and storm intensities.
