@@ -187,3 +187,6 @@ parcel_data/
 *.csv
 *.gz
 *.geojson
+
+
+TIV_model.ipynb
