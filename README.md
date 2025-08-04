@@ -2,7 +2,11 @@
 
 ## Project Overview
 
-A geospatial analysis system for severe convective storm hazards, designed to evaluate forecast skill through rigorous comparison of Practically Perfect Hindcasts (PPH) against operational Storm Prediction Center (SPC) convective outlooks. This framework processes multi-decadal datasets (2010-2024) to quantify forecasting performance using industry-standard verification metrics. The framework also includes a Total Insured Value Loss (TIVloss) model that is in development.
+A comprehensive geospatial analysis system for severe convective storm hazards with two primary components:
+
+1. **Forecast Verification Framework**: Evaluates forecast skill through rigorous comparison of Practically Perfect Hindcasts (PPH) against operational Storm Prediction Center (SPC) convective outlooks. Processes multi-decadal datasets (2010-2024) to quantify forecasting performance using industry-standard verification metrics.
+
+2. **Total Insured Value (TIV) Loss Model**: A machine learning-based catastrophe modeling system that predicts property-level insurance losses from hail events. Combines meteorological data (MESH radar, PPH forecasts), property characteristics (tax assessments, building features), and spatial factors to estimate percentage and dollar losses for individual properties.
 
 
 ## Architecture
@@ -13,8 +17,10 @@ A geospatial analysis system for severe convective storm hazards, designed to ev
 Data Acquisition → Processing Pipeline → Verification Engine → Analysis & Visualization
       ↓                    ↓                    ↓                      ↓
   - NOAA/NCEI APIs    - Grid Alignment     - Brier Scores      - Comparative Maps
-  - SPC Shapefiles    - Projection        - Performance       - Time Series
+  - SPC Shapefiles    - Projection        - Performance       - Time Series  
   - Storm Reports       Handling            Diagrams          - Overlap Analysis
+  - Property Data     - Feature            - TIV Loss         - Loss Predictions
+  - MESH Radar          Engineering          Modeling          - Risk Assessment
 ```
 
 ### Core Components
@@ -22,7 +28,8 @@ Data Acquisition → Processing Pipeline → Verification Engine → Analysis & 
 1. **Data Acquisition Layer** (`download_*.py`): Retrieve data from NOAA, NCEI, and SPC data sources
 2. **Spatial Processing Engine** (`hail_analysis.ipynb`): NAM212 grid operations with shapefile-to-grid conversion and projection management  
 3. **Verification Framework** (`hail_validation.ipynb`): Statistical analysis engine implementing multiple verification metrics
-4. **Caching System** (`cache/`): Pickle-based persistence layer reducing computation time for iterative analysis
+4. **TIV Loss Model** (`TIV_model.ipynb`): Random Forest-based catastrophe model for property-level hail damage prediction
+5. **Caching System** (`cache/`): Pickle-based persistence layer reducing computation time for iterative analysis
 
 ### Data Flow Architecture
 
@@ -55,6 +62,9 @@ pip install matplotlib seaborn jupyter
 # Statistical computing
 pip install scikit-learn scipy tqdm
 
+# Machine learning for TIV model
+pip install xgboost lightgbm
+
 # Data acquisition
 pip install requests beautifulsoup4
 ```
@@ -74,6 +84,8 @@ pip install requests beautifulsoup4
    mkdir -p {cache,analysis_outputs/{figures,brier_analysis}}
    mkdir -p NCEI_storm_reports/{hail_filtered,sighail_filtered}
    mkdir -p PPH/{NCEI_PPH,Sighail_PPH}
+   mkdir -p dallas_property_analysis/{tax_appraisal_value,building_footprints}
+   mkdir -p radar_data
    ```
 
 4. **Download Reference Grid**:
@@ -125,6 +137,40 @@ jupyter notebook hail_analysis.ipynb
 # Provides seasonal and monthly resolution analysis
 ```
 
+### TIV Loss Modeling
+
+```python
+# Launch TIV_model.ipynb for catastrophe loss modeling
+jupyter notebook TIV_model.ipynb
+
+# Model pipeline:
+# 1. Property data integration (tax assessments, building footprints)
+# 2. Weather feature extraction (MESH, PPH, NCEI reports) 
+# 3. Feature engineering (12-dimensional feature vectors)
+# 4. Random Forest training on synthetic loss targets
+# 5. Property-level loss prediction and validation
+
+# Key features:
+# - Weather: MESH hail size, PPH probability, storm distance/duration
+# - Property: Market value, age, construction quality, frame type
+# - Building: Footprint area, complexity, local density
+```
+
+### TIV Model Architecture
+
+The TIV loss model implements a Random Forest regressor with the following mathematical framework:
+
+**Loss Prediction**: `TIV_Loss = F(X) × 100%` where F maps 12-dimensional feature vectors to loss percentages
+
+**Feature Categories**:
+- **Weather Features** (4D): MESH hail size, PPH probability, NCEI distance, storm duration
+- **Property Features** (5D): Market value, building age, living area, construction quality, frame type  
+- **Building Features** (3D): Footprint area, complexity ratio, local building density
+
+**Training Labels**: Physics-based synthetic losses incorporating hail size thresholds, age vulnerability, construction factors, and exposure characteristics
+
+**Validation**: Currently demonstrated on May 19-20, 2023 Texas hailstorm with Dallas County property data
+
 ## Testing & CI
 
 ### Verification Approach
@@ -152,6 +198,16 @@ jupyter notebook hail_analysis.ipynb
 
 **Temporal Resolution**: Monthly analysis reveals seasonal patterns obscured in annual aggregates while maintaining statistical significance.
 
+### TIV Model Methodology
+
+**Synthetic Training Approach**: Model currently trained on physics-based synthetic loss labels rather than actual insurance claims, incorporating domain knowledge about hail damage patterns, building vulnerability, and exposure factors.
+
+**Feature Engineering**: 12-dimensional feature vectors combining meteorological data (MESH, PPH, storm proximity), property characteristics (value, age, construction), and spatial factors (building density, footprint complexity).
+
+**Machine Learning Architecture**: Random Forest regressor optimized for property-level loss prediction with hyperparameters tuned for generalization across property types and storm intensities.
+
+**Current Limitations**: Single storm validation (May 2023 Texas event), Dallas County geographic scope, and synthetic rather than actual loss training data. Future development will incorporate multi-storm validation and actual insurance claim data.
+
 ## License & Attribution
 
 ### License
@@ -162,6 +218,10 @@ This project is available under the MIT License - see LICENSE file for details.
 - **NCEI Storm Reports**: National Centers for Environmental Information storm database
 - **SPC Convective Outlooks**: NOAA Storm Prediction Center operational forecasts  
 - **NAM212 Grid**: North American Mesoscale model coordinate system
+- **MESH Radar Data**: Multi-Radar Multi-Sensor maximum hail size estimates
+- **Property Tax Data**: Dallas County Appraisal District (DCAD) assessments and building characteristics
+- **Building Footprints**: Microsoft Global ML Building Footprints dataset
+- **PPH Data**: Practically Perfect Hindcast probability grids
 - **Artemis Cat Bond Data**: Referenced for historical context (see papers/ directory)
 
 ### Citation
