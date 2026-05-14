@@ -106,7 +106,7 @@ I would look at Seasonality and Average Reports folders in Figures. Typically Ha
 
 In the Regression, 'abs_days_from_may15' is used standalone, while 'abs_days_from_july1' is multiplied by 'Num_Wind' and the result is used.
 
-#Summary of Data sources 
+# Summary of Data sources 
 
 Data sources are from the following. In the cases of the PPHs, you need the data from that source to run the code that creates them. Furthermore, I would have the 'filtered' dataset from Jim's code downloaded, but simply  contains all the report types and locations
 
